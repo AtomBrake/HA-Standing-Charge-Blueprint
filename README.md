@@ -112,8 +112,15 @@ to attach a cost to, so this always reports 0:
 - Device class: `Energy`
 - State class: `Total`
 
-(For gas, use `m³` and device class `Gas` for the dummy sensor, or `kWh` /
-`Energy` if your real gas source is already in kWh.)
+For the gas dummy sensor, unit and device class must be one of these two
+**matching pairs** — mixing them (e.g. `kWh` with device class `Gas`)
+will show an "Unexpected unit of measurement" warning in the Energy
+Dashboard:
+- `m³` with device class `Gas` (the default in
+  [`examples/helpers.yaml`](examples/helpers.yaml)), or
+- `kWh` with device class `Energy` — use this pair instead if your real
+  gas meter already reports in kWh and you want the dummy sensor to
+  match it.
 
 ### 3. Import and configure the blueprint
 

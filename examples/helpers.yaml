@@ -69,6 +69,11 @@ template:
         state_class: total
         state: "{{ states('input_number.gas_standing_charge_accrued') | float(0) }}"
 
+      # unit_of_measurement and device_class below must be a matching
+      # pair - either ("m³", gas) as shown, or ("kWh", energy) if your
+      # real gas meter already reports in kWh and you'd rather match it.
+      # Mixing them (e.g. kWh with device_class: gas) shows an
+      # "Unexpected unit of measurement" warning in the Energy Dashboard.
       - name: "Gas Standing Charge Usage"
         unique_id: gas_standing_charge_dummy_usage
         unit_of_measurement: "m³"
