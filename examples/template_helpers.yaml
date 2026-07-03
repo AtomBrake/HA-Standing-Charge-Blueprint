@@ -8,15 +8,19 @@
 #
 # Each fuel needs:
 #   - a "total" sensor (device_class: monetary) that mirrors your
-#     input_number.*_standing_charge_total helper - this is what you
-#     register with the Energy Dashboard as "entity tracking total cost"
+#     input_number.*_standing_charge_accrued helper - this is what you
+#     register with the Energy Dashboard as "entity tracking total cost".
+#     Note this sensor and the input_number it reads from are two
+#     different entities with deliberately different names (_total vs
+#     _accrued) - don't confuse them when configuring the blueprint or
+#     the Energy Dashboard.
 #   - a "dummy usage" sensor that always reports 0 - this is what you
 #     register as the zero-usage source the cost is attached to
 #
 # Both input_number helpers referenced below (`..._standing_charge_rate`
-# and `..._standing_charge_total`) must be created first (also via
+# and `..._standing_charge_accrued`) must be created first (also via
 # Settings > Devices & Services > Helpers > + Create Helper > Number).
-# The blueprint automation only updates `..._standing_charge_total`; you
+# The blueprint automation only updates `..._standing_charge_accrued`; you
 # maintain `..._standing_charge_rate` by hand (or point it at a sensor
 # from your supplier's integration).
 
@@ -27,7 +31,7 @@ template:
         unit_of_measurement: "GBP"
         device_class: monetary
         state_class: total
-        state: "{{ states('input_number.electricity_standing_charge_total') | float(0) }}"
+        state: "{{ states('input_number.electricity_standing_charge_accrued') | float(0) }}"
 
       - name: "Electricity Standing Charge Usage"
         unique_id: electricity_standing_charge_dummy_usage
@@ -41,7 +45,7 @@ template:
         unit_of_measurement: "GBP"
         device_class: monetary
         state_class: total
-        state: "{{ states('input_number.gas_standing_charge_total') | float(0) }}"
+        state: "{{ states('input_number.gas_standing_charge_accrued') | float(0) }}"
 
       - name: "Gas Standing Charge Usage"
         unique_id: gas_standing_charge_dummy_usage

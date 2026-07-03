@@ -50,11 +50,15 @@ and gas together.
 Settings → Devices & Services → Helpers → **+ Create Helper**.
 
 You need two of these regardless of where your rate comes from — a Number
-helper for the running total, and a Date helper for catch-up bookkeeping:
+helper for the running total, and a Date helper for catch-up bookkeeping.
+**The Number helper here is not the same entity as the template sensor
+you'll create in step 2** — you need both; the blueprint writes to this
+one, and the template sensor in step 2 just mirrors it for the Energy
+Dashboard:
 
 | Helper | Purpose | Suggested settings |
 |---|---|---|
-| `input_number.electricity_standing_charge_total` | Running total the blueprint increments | Min `0`, Max `100000`, Step `0.0001` |
+| `input_number.electricity_standing_charge_accrued` | Running total the blueprint writes to directly | Min `0`, Max `100000`, Step `0.0001` |
 | `input_datetime.electricity_standing_charge_last_accrual` (type: **Date**, no time component) | Last date the blueprint successfully ran — used only for catch-up after Home Assistant has been offline. Leave it at its default value. |
 
 **For the rate itself**, most UK energy integrations (Octopus Energy and
@@ -81,10 +85,12 @@ Settings → Devices & Services → Helpers → **+ Create Helper** → Template
 Template a sensor. Create both of these (values shown are for electricity —
 repeat for gas):
 
-**Standing charge cost sensor** — mirrors the running total, tagged so the
-Energy Dashboard treats it as money:
+**Standing charge cost sensor** — mirrors the `input_number` from step 1,
+tagged so the Energy Dashboard treats it as money. This is a *different*
+entity from the `input_number` it reads from — note the different domain
+(`sensor.` vs `input_number.`) and name (`_total` vs `_accrued`):
 - Name: `Electricity Standing Charge Total`
-- State template: `{{ states('input_number.electricity_standing_charge_total') | float(0) }}`
+- State template: `{{ states('input_number.electricity_standing_charge_accrued') | float(0) }}`
 - Unit of measurement: `GBP` (or your currency)
 - Device class: `Monetary`
 - State class: `Total`
@@ -120,7 +126,11 @@ Fill in the Electricity section (required):
 - **Standing Charge Rate Entity**: your supplier's entity (see step 1), or
   `input_number.electricity_standing_charge_rate` if you created the
   fallback helper instead
-- **Cumulative Total Entity**: `input_number.electricity_standing_charge_total`
+- **Cumulative Total Entity**: `input_number.electricity_standing_charge_accrued`
+  — this must be the `input_number` from step 1, **not** the
+  `sensor.electricity_standing_charge_total` template sensor from step 2
+  (that one won't appear in this field's picker at all, since it isn't an
+  `input_number`)
 - **Last Accrual Date Entity**: `input_datetime.electricity_standing_charge_last_accrual`
 
 If you have a gas supply, expand the Gas section and fill in the
