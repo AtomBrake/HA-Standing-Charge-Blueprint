@@ -7,9 +7,11 @@ totals it shows are always short of your real bill.
 
 This project adds the missing piece: a small blueprint automation that
 accrues the standing charge once a day into a running total, which you then
-show on the Energy Dashboard as a separate cost-only source (electricity and
-gas are set up independently, and each of you can even have different
-standing charges e.g. if you're on a variable tariff).
+show on the Energy Dashboard as a separate cost-only source. One instance
+of the blueprint covers a dual-fuel household — electricity and gas each
+get their own rate and running total, so they can differ (e.g. different
+tariffs or renewal dates) even though a single automation handles both. If
+you're electricity-only, just leave the gas fields blank.
 
 [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FAtomBrake%2FStandingChargeBlueprint%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fstanding_charge%2Fstanding_charge_accrual.yaml)
 
@@ -29,14 +31,19 @@ standing charge cost separately if you want to.
 
 ## Requirements
 
+- Home Assistant 2024.6 or later (needed for the blueprint's collapsible
+  Electricity/Gas input sections).
 - An existing Energy Dashboard already configured with electricity and/or
   gas usage and cost.
-- Willingness to create a handful of Helpers (a few clicks each, no YAML
-  required unless you prefer it).
+- Willingness to create a handful of Helpers per fuel (a few clicks each,
+  no YAML required unless you prefer it).
 
 ## Setup
 
-Repeat this whole process once per fuel (electricity, gas).
+Steps 1, 2 and 4 below are per fuel — do them once for electricity, then
+again for gas if you have a gas supply. Step 3 (importing the blueprint)
+only happens **once**: a single automation instance handles electricity
+and gas together.
 
 ### 1. Create the helpers
 
@@ -65,7 +72,8 @@ manually maintained Number helper instead:
 
 You'll need to update this by hand whenever your tariff changes.
 
-Repeat with `gas_` names for gas.
+If you also have a gas supply, repeat the above with `gas_` names. If
+you're electricity-only, skip ahead — there's nothing to create for gas.
 
 ### 2. Create two Template sensors
 
@@ -104,16 +112,24 @@ Automations & Scenes → Blueprints → Import Blueprint, and paste in:
 https://github.com/AtomBrake/StandingChargeBlueprint/blob/main/blueprints/automation/standing_charge/standing_charge_accrual.yaml
 ```
 
-Then create an automation from the blueprint (once for electricity, once
-for gas):
+Create **one** automation from the blueprint — it has an Electricity
+section and a Gas section.
+
+Fill in the Electricity section (required):
 
 - **Standing Charge Rate Entity**: your supplier's entity (see step 1), or
   `input_number.electricity_standing_charge_rate` if you created the
   fallback helper instead
 - **Cumulative Total Entity**: `input_number.electricity_standing_charge_total`
 - **Last Accrual Date Entity**: `input_datetime.electricity_standing_charge_last_accrual`
-- **Accrual Time**: `00:00:00` (default — see the blueprint description for
-  why you might change this)
+
+If you have a gas supply, expand the Gas section and fill in the
+equivalent three fields with your `gas_` entities. **Electricity-only?
+Leave the whole Gas section collapsed and blank** — it's skipped entirely
+when empty.
+
+Finally, set the **Accrual Time** (default `00:00:00`) — this applies to
+both fuels, since standing charges typically both start from midnight.
 
 ### 4. Add the source to the Energy Dashboard
 
@@ -126,7 +142,8 @@ Settings → Dashboards → Energy → Electricity grid → **Add Consumption**:
    `sensor.electricity_standing_charge_total`.
 4. Save.
 
-Repeat under "Gas consumption" for the gas sensors.
+If you have a gas supply, repeat under "Gas consumption" for the gas
+sensors.
 
 Your Energy Dashboard totals, cost breakdown, and statistics will now
 include both usage and standing charge.

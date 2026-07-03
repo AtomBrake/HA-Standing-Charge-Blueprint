@@ -1,82 +1,122 @@
 blueprint:
   name: Daily Standing Charge Accrual
   description: >
-    Adds a daily standing charge (e.g. electricity or gas connection fee) onto
-    a running total, so it shows up as an extra cost-only source on the Home
-    Assistant Energy Dashboard alongside your usage costs.
+    Adds a daily standing charge onto a running total for electricity and,
+    optionally, gas — so it shows up as an extra cost-only source on the
+    Home Assistant Energy Dashboard alongside your usage costs. One
+    instance of this blueprint covers a dual-fuel household; if you're
+    electricity-only, just leave the Gas section blank.
 
 
-    Instantiate this blueprint **once per fuel** (once for electricity, once
-    for gas).
-
-
-    Requires three helpers to already exist before you use this blueprint:
+    Requires three helpers per fuel to already exist before you use this
+    blueprint (see the repository README for how to create them):
 
     1. An `input_number` holding **today's standing charge rate**, in your
-    currency (e.g. `0.6123` for 61.23p/day). You update this by hand when
-    your tariff changes, or point it at a sensor from your energy supplier's
-    integration if it already exposes the standing charge.
+    currency (e.g. `0.6123` for 61.23p/day) - often available directly from
+    your energy supplier's integration rather than needing its own helper.
 
     2. An `input_number` holding the **running cumulative total**. This
     automation adds the rate to it. You then wrap this helper in a template
-    sensor (see the repository README) and register that sensor with the
-    Energy Dashboard as the entity that "tracks the total cost" for a
-    zero-usage source.
+    sensor and register that sensor with the Energy Dashboard as the entity
+    that "tracks the total cost" for a zero-usage source.
 
     3. An `input_datetime` (date only) that remembers the **last date this
-    successfully ran**. This is what lets it catch up on any days it missed
-    while Home Assistant was offline, instead of silently skipping them.
+    successfully ran** for that fuel. This is what lets it catch up on any
+    days it missed while Home Assistant was offline, instead of silently
+    skipping them.
 
 
     As well as running daily at the configured time, this also runs once
-    when Home Assistant starts up. On either trigger, it compares today's
-    date to the last recorded accrual date and adds the rate once for every
-    day in between — so a restart, update, or outage that spans the accrual
-    time no longer loses that day's charge. A multi-day gap is backfilled
-    using the *current* rate for every missed day, which may be slightly
-    off if your rate changed mid-outage.
+    when Home Assistant starts up. On either trigger, for each configured
+    fuel it compares today's date to the last recorded accrual date and
+    adds the rate once for every day in between - so a restart, update, or
+    outage that spans the accrual time no longer loses that day's charge.
+    A multi-day gap is backfilled using the *current* rate for every missed
+    day, which may be slightly off if your rate changed mid-outage.
 
 
     See the repository README for full setup steps, including the template
     sensors and Energy Dashboard configuration this blueprint depends on.
   domain: automation
   source_url: https://github.com/AtomBrake/StandingChargeBlueprint/blob/main/blueprints/automation/standing_charge/standing_charge_accrual.yaml
+  min_version: "2024.6.0"
   input:
-    rate_entity:
-      name: Standing Charge Rate Entity
+    electricity:
+      name: Electricity
+      icon: mdi:flash
+      description: Required.
+      input:
+        electricity_rate_entity:
+          name: Standing Charge Rate Entity
+          description: >
+            Entity holding today's daily electricity standing charge, in
+            your currency (e.g. 0.6123 for 61.23p/day).
+          selector:
+            entity:
+              domain:
+                - input_number
+                - sensor
+                - number
+        electricity_total_entity:
+          name: Cumulative Total Entity
+          description: >
+            The input_number helper that stores the running total this
+            automation increments.
+          selector:
+            entity:
+              domain: input_number
+        electricity_last_accrual_entity:
+          name: Last Accrual Date Entity
+          description: >
+            An input_datetime helper (Date only, no time) that stores the
+            last date this ran for electricity. Leave it at its default
+            value when first created.
+          selector:
+            entity:
+              domain: input_datetime
+    gas:
+      name: Gas
+      icon: mdi:fire
       description: >
-        Entity holding today's daily standing charge, in your currency
-        (e.g. 0.6123 for 61.23p/day).
-      selector:
-        entity:
-          domain:
-            - input_number
-            - sensor
-            - number
-    total_entity:
-      name: Cumulative Total Entity
-      description: >
-        The input_number helper that stores the running total this
-        automation increments. This is the helper you wrap in a template
-        sensor and register with the Energy Dashboard.
-      selector:
-        entity:
-          domain: input_number
-    last_accrual_entity:
-      name: Last Accrual Date Entity
-      description: >
-        An input_datetime helper (Date only, no time) that stores the last
-        date this automation successfully accrued the charge. Used purely
-        for catch-up after Home Assistant has been offline - leave it at
-        its default value when first created.
-      selector:
-        entity:
-          domain: input_datetime
+        Optional - leave every field in this section blank if you don't
+        have a gas supply. The whole section is skipped when empty.
+      collapsed: true
+      input:
+        gas_rate_entity:
+          name: Standing Charge Rate Entity
+          description: >
+            Entity holding today's daily gas standing charge. Leave blank
+            if you don't have gas.
+          default: ""
+          selector:
+            entity:
+              domain:
+                - input_number
+                - sensor
+                - number
+        gas_total_entity:
+          name: Cumulative Total Entity
+          description: >
+            The input_number helper that stores the running gas total.
+            Leave blank if you don't have gas.
+          default: ""
+          selector:
+            entity:
+              domain: input_number
+        gas_last_accrual_entity:
+          name: Last Accrual Date Entity
+          description: >
+            An input_datetime helper (Date only, no time) that stores the
+            last date this ran for gas. Leave blank if you don't have gas.
+          default: ""
+          selector:
+            entity:
+              domain: input_datetime
     reset_time:
       name: Accrual Time
       description: >
-        Time of day the standing charge is added to the running total.
-        Defaults to midnight.
+        Time of day standing charges are added to the running total(s).
+        Defaults to midnight. Applies to both fuels.
       default: "00:00:00"
       selector:
         time: {}
@@ -90,27 +130,45 @@ trigger:
     event: start
 
 variables:
-  rate_entity: !input rate_entity
-  total_entity: !input total_entity
-  last_accrual_entity: !input last_accrual_entity
-  last_accrual_state: "{{ states(last_accrual_entity) }}"
-  days_elapsed: >-
-    {{ 1 if last_accrual_state in ['unknown', 'unavailable', 'none', ''] else
-       ([(now().date() - (last_accrual_state | as_datetime).date()).days, 0] | max) }}
-
-condition:
-  - condition: template
-    value_template: "{{ days_elapsed | int(0) >= 1 }}"
+  fuels:
+    - rate_entity: !input electricity_rate_entity
+      total_entity: !input electricity_total_entity
+      last_accrual_entity: !input electricity_last_accrual_entity
+    - rate_entity: !input gas_rate_entity
+      total_entity: !input gas_total_entity
+      last_accrual_entity: !input gas_last_accrual_entity
 
 action:
-  - service: input_number.set_value
-    target:
-      entity_id: !input total_entity
-    data:
-      value: >-
-        {{ ((states(total_entity) | float(0)) + (days_elapsed | int(0)) * (states(rate_entity) | float(0))) | round(4) }}
-  - service: input_datetime.set_datetime
-    target:
-      entity_id: !input last_accrual_entity
-    data:
-      date: "{{ now().strftime('%Y-%m-%d') }}"
+  - repeat:
+      for_each: "{{ fuels }}"
+      sequence:
+        - if:
+            - condition: template
+              value_template: >-
+                {{ repeat.item.rate_entity not in ['', none]
+                   and repeat.item.total_entity not in ['', none]
+                   and repeat.item.last_accrual_entity not in ['', none] }}
+          then:
+            - variables:
+                rate_entity: "{{ repeat.item.rate_entity }}"
+                total_entity: "{{ repeat.item.total_entity }}"
+                last_accrual_entity: "{{ repeat.item.last_accrual_entity }}"
+                last_accrual_state: "{{ states(repeat.item.last_accrual_entity) }}"
+                days_elapsed: >-
+                  {{ 1 if last_accrual_state in ['unknown', 'unavailable', 'none', ''] else
+                     ([(now().date() - (last_accrual_state | as_datetime).date()).days, 0] | max) }}
+            - if:
+                - condition: template
+                  value_template: "{{ days_elapsed | int(0) >= 1 }}"
+              then:
+                - service: input_number.set_value
+                  target:
+                    entity_id: "{{ total_entity }}"
+                  data:
+                    value: >-
+                      {{ ((states(total_entity) | float(0)) + (days_elapsed | int(0)) * (states(rate_entity) | float(0))) | round(4) }}
+                - service: input_datetime.set_datetime
+                  target:
+                    entity_id: "{{ last_accrual_entity }}"
+                  data:
+                    date: "{{ now().strftime('%Y-%m-%d') }}"
