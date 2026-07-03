@@ -187,7 +187,7 @@ include both usage and standing charge.
   all of them at once — so a restart, update, or outage spanning the
   accrual time no longer loses that day's charge. A backfilled gap uses
   the *current* rate for every missed day, which may be slightly off if
-  your rate changed partway through the outage. Capped at 60 days as a
+  your rate changed partway through the outage. Capped at 7 days as a
   safety limit, so a corrupted or badly-set date can't cause a runaway
   backfill.
 - The currency you set on the template sensor should match your Home

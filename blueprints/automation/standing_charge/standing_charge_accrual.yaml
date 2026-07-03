@@ -36,7 +36,7 @@ blueprint:
     outage that spans the accrual time no longer loses that day's charge.
     A multi-day gap is backfilled using the *current* rate for every missed
     day, which may be slightly off if your rate changed mid-outage, and is
-    capped at 60 days as a safety limit against runaway backfills from a
+    capped at 7 days as a safety limit against runaway backfills from a
     corrupted or mis-set date.
 
 
@@ -171,7 +171,7 @@ actions:
                 last_accrual_state: "{{ states(repeat.item.last_accrual_entity) }}"
                 days_elapsed: >-
                   {{ [ (1 if last_accrual_state in ['unknown', 'unavailable', 'none', ''] else
-                        ([(now().date() - (last_accrual_state | as_datetime).date()).days, 0] | max)), 60 ] | min }}
+                        ([(now().date() - (last_accrual_state | as_datetime).date()).days, 0] | max)), 7 ] | min }}
             - if:
                 - condition: template
                   value_template: "{{ days_elapsed | int(0) >= 1 }}"
