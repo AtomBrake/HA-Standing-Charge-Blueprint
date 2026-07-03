@@ -42,22 +42,28 @@ Repeat this whole process once per fuel (electricity, gas).
 
 Settings → Devices & Services → Helpers → **+ Create Helper**.
 
-Two Number helpers:
+You need two of these regardless of where your rate comes from — a Number
+helper for the running total, and a Date helper for catch-up bookkeeping:
+
+| Helper | Purpose | Suggested settings |
+|---|---|---|
+| `input_number.electricity_standing_charge_total` | Running total the blueprint increments | Min `0`, Max `100000`, Step `0.0001` |
+| `input_datetime.electricity_standing_charge_last_accrual` (type: **Date**, no time component) | Last date the blueprint successfully ran — used only for catch-up after Home Assistant has been offline. Leave it at its default value. |
+
+**For the rate itself**, most UK energy integrations (Octopus Energy and
+others) already expose it somewhere, so you likely don't need to create
+anything: see [Using a supplier integration for the rate](#using-a-supplier-integration-for-the-rate)
+below, find the right entity for your supplier, and use that directly as
+the **Standing Charge Rate Entity** in step 3.
+
+Only if you don't have a suitable supplier-exposed entity, fall back to a
+manually maintained Number helper instead:
 
 | Helper | Purpose | Suggested settings |
 |---|---|---|
 | `input_number.electricity_standing_charge_rate` | Today's daily standing charge, in your currency (e.g. `0.6123` for 61.23p) | Min `0`, Max `10`, Step `0.0001` |
-| `input_number.electricity_standing_charge_total` | Running total the blueprint increments | Min `0`, Max `100000`, Step `0.0001` |
 
-And one Date and/or time helper (type: **Date**, no time component):
-
-| Helper | Purpose |
-|---|---|
-| `input_datetime.electricity_standing_charge_last_accrual` | Last date the blueprint successfully ran — used only for catch-up after Home Assistant has been offline. Leave it at its default value. |
-
-Set the rate helper to your current standing charge now. You'll need to
-update it by hand whenever your tariff changes (or point the blueprint at a
-sensor from your supplier's integration instead — see [Advanced](#advanced)).
+You'll need to update this by hand whenever your tariff changes.
 
 Repeat with `gas_` names for gas.
 
@@ -101,7 +107,9 @@ https://github.com/AtomBrake/StandingChargeBlueprint/blob/main/blueprints/automa
 Then create an automation from the blueprint (once for electricity, once
 for gas):
 
-- **Standing Charge Rate Entity**: `input_number.electricity_standing_charge_rate`
+- **Standing Charge Rate Entity**: your supplier's entity (see step 1), or
+  `input_number.electricity_standing_charge_rate` if you created the
+  fallback helper instead
 - **Cumulative Total Entity**: `input_number.electricity_standing_charge_total`
 - **Last Accrual Date Entity**: `input_datetime.electricity_standing_charge_last_accrual`
 - **Accrual Time**: `00:00:00` (default — see the blueprint description for
@@ -135,10 +143,11 @@ include both usage and standing charge.
 - The currency you set on the template sensor should match your Home
   Assistant instance's configured currency (Settings → General).
 - If you're on a variable/tracker tariff where the standing charge changes
-  daily, update the rate `input_number` (or point it at your supplier
-  integration's sensor) before the accrual time each day.
+  daily, make sure whatever the rate entity points at is updated before the
+  accrual time each day — automatic if it's a supplier-integration sensor,
+  manual if you're using the fallback `input_number`.
 
-## Advanced: using a supplier integration for the rate
+## Using a supplier integration for the rate
 
 The blueprint's **Standing Charge Rate Entity** input accepts any
 `input_number`, `number`, or `sensor` entity — it just reads that entity's
